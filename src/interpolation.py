@@ -1,20 +1,7 @@
 import numpy as np
-from src.utilities import find_closest, find_closest_indexes
 
 
-# def interpolate_row(row, krn):
-#     kernels = []
-#     space = np.linspace(0, 1, 2 * len(row))
-#
-#     for x, y in zip(space.tolist(), row.tolist()):
-#         kernel = krn(space, offset=2 * x, width=1 / len(row))
-#         # print(kernel.shape)
-#         kernels.append(y * kernel)
-#
-#     return space, np.sum(np.asarray(kernels), axis=0)
-
-
-def interpolate_img(img, krn):
+def interpolate_img(img):
     result = []
     if len(img) < 1:
         print("Err: Given image can't be empty!")
@@ -81,50 +68,3 @@ def interpolate_blue(blue):
         blue[col_b] = interpolate_row(blue[col_b], data_start=1, data_step=2)
 
     return np.transpose(blue.astype(int))
-
-
-#
-# def interpolate(x_arr: np.ndarray, y_arr: np.ndarray, x_result: np.ndarray, kernel, interp_range=0):
-#     """
-#     Interpolate data using the specified kernel
-#
-#     Args:
-#         :param x_arr: The x-values of the original data (function).
-#         :param y_arr: The y-values of the original data (function).
-#         :param x_result: The x-values for interpolation.
-#         :param kernel: The interpolation kernel function
-#         :param interp_range: The range of points near the interpolated point on which we perform interpolation  # UPDATE
-#
-#     :return: numpy.ndarray: The interpolated y-values
-#     """
-#     if len(x_arr) < 1:
-#         print("Err: x_arr can't be empty!")
-#         return 0
-#
-#     y_result = []
-#     # range_len = np.abs(x_arr[0] - x_arr[-1])  # Length of measured range
-#     # distance = range_len / (len(x_result) - 1)  # Distance between two points
-#
-#     for i in range(len(x_result)):
-#         if interp_range > 0:
-#             temp_x_arr = find_closest(x_result[i], x_arr, interp_range)
-#             temp_y_arr = []
-#             for index in find_closest_indexes(x_result[i], x_arr, interp_range):
-#                 temp_y_arr.append(y_arr[int(index)])
-#         else:
-#             temp_x_arr = x_arr
-#             temp_y_arr = y_arr
-#
-#         weights = kernel(x_result[i] - temp_x_arr)
-#         weights = weights.astype(float)
-#         total_weight = np.sum(weights)
-#
-#         if total_weight != 0:
-#             weights /= total_weight
-#
-#             y = np.sum(weights * temp_y_arr)
-#             y_result.append(y)
-#         else:
-#             y_result.append(0)
-#
-#     return y_result

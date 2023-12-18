@@ -2,99 +2,126 @@ import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap
 import skimage as sk
-from src.extractions import extract_red, extract_green, extract_blue, merge_channels
-import src.kernels as krn
+from src.utilities import print_channels_data
+from src.extractions import extract_red, extract_green, extract_blue
+from src.cfa_simulation import simulate_cfa, simulate_cfa_3d
 import src.interpolation as interp
+from src.convolution import convolve2d, normalize_image
 
 
-def simulate_cfa(input_img, cfa_pattern='GRBG'):
+def demosaic_bayer_interp(img) -> np.ndarray:
     """
-    Simulates the CFA (Color Filter Array) pattern on the input image
-
-    :param input_img: Original image
-    :param cfa_pattern: Pattern of the CFA
-    :return: Image with simulated CFA
+    Demosaic the image using bilinear interpolation
+    :param img: Image to demosaic
+    :return: Demosaiced image -> ndarray[H, W, 3]
     """
-    if len(input_img) < 1:
-        print("Err: Empty image sent to the simulate_cfa func!")
-        return 0
+    # Extract channels
+    red = extract_red(img)
+    green = extract_green(img)
+    blue = extract_blue(img)
 
-    gray_img = sk.color.rgb2gray(input_img)
-
-    cfa_raw = np.zeros_like(gray_img)
-
-    if cfa_pattern == 'GRBG':
-        cfa_raw[::2, ::2] = input_img[::2, 1::2, 1]  # Green
-        cfa_raw[::2, 1::2] = input_img[::2, ::2, 0]  # Red
-        cfa_raw[1::2, ::2] = input_img[1::2, 1::2, 2]  # Blue
-        cfa_raw[1::2, 1::2] = input_img[1::2, ::2, 1]  # Green
-    elif cfa_pattern == 'RGGB':
-        cfa_raw[::2, ::2] = gray_img[::2, ::2]  # Red
-        cfa_raw[1::2, ::2] = gray_img[1::2, ::2]  # Green
-        cfa_raw[::2, 1::2] = gray_img[::2, 1::2]  # Green
-        cfa_raw[1::2, 1::2] = gray_img[1::2, 1::2]  # Blue
-    else:
-        print("Err: Unsupported CFA pattern!")
-        raise ValueError("Unsupported CFA pattern")
-
-    return cfa_raw
-
-
-if __name__ == '__main__':
-
-    fig, ax = plt.subplots(2, 2, figsize=(12, 8))
-
-    ax_base = ax[0][0]
-    ax_red = ax[0][1]
-    ax_green = ax[1][0]
-    ax_blue = ax[1][1]
-
-    image = sk.io.imread("img/namib.jpg")  # Load image
-    image = image[:, :, :3]  # Remove alpha channel if exists
-
-    print(image.shape)
-
-    print("Blue min: " + str(np.min(image[:, :, 2])))
-    print("Blue max: " + str(np.max(image[:, :, 2])))
-
-    image = simulate_cfa(image)  # Simulate CFA
-
-
-    print(image.shape)
-
-    red = extract_red(image)
-    green = extract_green(image)
-    blue = extract_blue(image)
-
+    # Interpolate channels
     red = interp.interpolate_red(red)
     green = interp.interpolate_green(green)
     blue = interp.interpolate_blue(blue)
 
-    # Print channel data
-    print("Red channel: " + str(red.shape))
-    print("Red min: " + str(np.min(red)))
-    print("Red max: " + str(np.max(red)))
-    print("Green channel: " + str(green.shape))
-    print("Green min: " + str(np.min(green)))
-    print("Green max: " + str(np.max(green)))
-    print("Blue channel: " + str(blue.shape))
-    print("Blue min: " + str(np.min(blue)))
-    print("Blue max: " + str(np.max(blue)))
+    print_channels_data(red, green, blue)  # Print data about the channels
 
-    # Custom colormaps
-    reds = [(0, 0, 0), (1, 0, 0)]
+    result_img = np.dstack([red, green, blue])  # Merge channels
+    print("Result image: " + str(result_img.shape))  # Print data about the result image
+
+    return result_img
+
+
+def demosaic_bayer_conv(img, kernel):
+    """
+    Demosaic the image using convolution
+    :param img: Image to demosaic
+    :param kernel: Kernel array for convolution
+    :return: Demosaiced image -> ndarray[H, W, 3]
+    """
+    # Separate color channels
+    red = img[:, :, 0]
+    green = img[:, :, 1]
+    blue = img[:, :, 2]
+
+    # Convolve each channel with the demosaicing kernel
+    red_convolved = convolve2d(red, kernel)
+    green_convolved = convolve2d(green, kernel/2)
+    blue_convolved = convolve2d(blue, kernel)
+
+    # Stack the convolved channels to form the demosaiced image
+    result_img = np.dstack([red_convolved, green_convolved, blue_convolved])
+
+    # Normalize values to the valid range (0-255)
+    result_img = normalize_image(result_img)
+
+    return result_img
+
+
+if __name__ == '__main__':
+
+    """ DEMOSAICING - INTERPOLATION """
+
+    image = sk.io.imread("img/test_min.jpg")  # Load image
+    image = image[:, :, :3]  # Remove alpha channel if exists
+
+    original_img = image
+    image_interp = simulate_cfa(image)  # Simulate CFA
+
+    image_interp = demosaic_bayer_interp(image_interp)  # Demosaic image
+
+    """ DEMOSAICING - CONVOLUTION """
+
+    image_conv = simulate_cfa_3d(original_img)  # Simulate CFA
+
+    # Demosaicing kernel (e.g., bilinear)
+    kernel = np.array([[0.25, 0.5, 0.25],
+                       [0.5, 1, 0.5],
+                       [0.25, 0.5, 0.25]])
+
+    # Normalize the kernel
+    kernel /= np.sum(kernel)
+
+    # Perform demosaicing
+    final_conv_img = demosaic_bayer_conv(image_conv, kernel)
+
+    """ PLOTTING """
+
+    # Custom color-maps for plotting the channels
+    reds = np.array([(0, 0, 0), (1, 0, 0)])
+    greens = np.array([(0, 0, 0), (0, 1, 0)])
+    blues = np.array([(0, 0, 0), (0, 0, 1)])
     cm_r = LinearSegmentedColormap.from_list('red', reds, N=20)
-    greens = [(0, 0, 0), (0, 1, 0)]
     cm_g = LinearSegmentedColormap.from_list('green', greens, N=20)
-    blues = [(0, 0, 0), (0, 0, 1)]
     cm_b = LinearSegmentedColormap.from_list('blue', blues, N=20)
 
-    final_img = np.dstack([red, green, blue])
-    print("Final image: " + str(final_img.shape))
+    # Plotting the channels
+    _, ax = plt.subplots(2, 2, figsize=(14, 10))
 
-    ax_base.imshow(image)
-    ax_red.imshow(red, cmap=cm_r)
-    ax_green.imshow(green, cmap=cm_g)
-    ax_blue.imshow(final_img)
+    ax[0][0].imshow(image_interp)  # Demosaiced image
+    ax[0][0].set_title('Demosaiced image')
+    ax[0][1].imshow(image_interp[:, :, 0], cmap=cm_r)  # Red channel
+    ax[0][1].set_title('Red channel')
+    ax[1][0].imshow(image_interp[:, :, 1], cmap=cm_g)  # Green channel
+    ax[1][0].set_title('Green channel')
+    ax[1][1].imshow(image_interp[:, :, 2], cmap=cm_b)  # Blue channel
+    ax[1][1].set_title('Blue channel')
+
+    # Plotting the images for interpolation
+    _, ax2 = plt.subplots(1, 2, figsize=(12, 6))
+
+    ax2[0].imshow(image_conv)
+    ax2[0].set_title('Original Bayer Image')
+    ax2[1].imshow(image_interp)
+    ax2[1].set_title('Demosaiced Image (Interpolation)')
+
+    # Plotting the images for convolution
+    _, ax3 = plt.subplots(1, 2, figsize=(12, 6))
+
+    ax3[0].imshow(image_conv)
+    ax3[0].set_title('Original Bayer Image')
+    ax3[1].imshow(final_conv_img)
+    ax3[1].set_title('Demosaiced Image (Convolution)')
 
     plt.show()

@@ -1,6 +1,25 @@
 import numpy as np
 
 
+def print_channels_data(r, g, b):
+    """
+    Print data about the channels
+    :param r: Red channel
+    :param g: Green channel
+    :param b: Blue channel
+    :return: none
+    """
+    print("Red channel: " + str(r.shape))
+    print("Red min: " + str(np.min(r)))
+    print("Red max: " + str(np.max(r)))
+    print("Green channel: " + str(g.shape))
+    print("Green min: " + str(np.min(g)))
+    print("Green max: " + str(np.max(g)))
+    print("Blue channel: " + str(b.shape))
+    print("Blue min: " + str(np.min(b)))
+    print("Blue max: " + str(np.max(b)))
+
+
 def invert(x):
     return np.sin(np.power(x, -1))
 
