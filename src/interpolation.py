@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import numpy as np
 
 
@@ -38,7 +39,7 @@ def interpolate_red(red):
     for col_r in range(len(red)):
         red[col_r] = interpolate_row(red[col_r], data_start=0, data_step=2)
 
-    return np.transpose(red.astype(int))
+    return np.transpose(red)
 
 
 def interpolate_green(green):
@@ -54,7 +55,7 @@ def interpolate_green(green):
         green[col_g] = interpolate_row(green[col_g], data_start=0, data_step=2)
 
     green = np.transpose(green)
-    return green.astype(int)
+    return green
 
 
 def interpolate_blue(blue):
@@ -67,4 +68,4 @@ def interpolate_blue(blue):
     for col_b in range(len(blue)):
         blue[col_b] = interpolate_row(blue[col_b], data_start=1, data_step=2)
 
-    return np.transpose(blue.astype(int))
+    return np.transpose(blue)

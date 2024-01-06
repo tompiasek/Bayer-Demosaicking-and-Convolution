@@ -1,4 +1,5 @@
 import numpy as np
+import skimage as sk
 
 
 def print_channels_data(r, g, b):
@@ -18,6 +19,42 @@ def print_channels_data(r, g, b):
     print("Blue channel: " + str(b.shape))
     print("Blue min: " + str(np.min(b)))
     print("Blue max: " + str(np.max(b)))
+
+
+def compare_with_original(original, compare):
+    """
+    Calculates PSNR between two images
+    :param original: Original image
+    :param compare: Image to compare
+    :return: PSNR and SSIM value
+    """
+    # Check if images are not empty
+    if len(original) < 1 or len(compare) < 1:
+        print("Err: Empty image sent to the PSNR func!")
+        return 0
+
+    # Convert from gray-scale to RGB if needed
+    if len(original.shape) == 2:
+        original = sk.color.gray2rgb(original)
+    if len(compare.shape) == 2:
+        reconstructed = sk.color.gray2rgb(compare)
+
+    # Check if images have the same shape
+    if original.shape < compare.shape:
+        print("Err: Original image can't be lower res than compare image!")
+        return 0
+    elif original.shape > compare.shape:
+        original = sk.transform.resize(original, compare.shape)
+
+    # Calculate PSNR and SSIM
+    if np.max(original) > 1:
+        psnr = sk.metrics.peak_signal_noise_ratio(original, compare, data_range=255)
+        ssim = sk.metrics.structural_similarity(original, compare, multichannel=True, channel_axis=2, data_range=255)
+    else:
+        psnr = sk.metrics.peak_signal_noise_ratio(original, compare, data_range=1)
+        ssim = sk.metrics.structural_similarity(original, compare, multichannel=True, channel_axis=2, data_range=1)
+
+    return psnr, ssim
 
 
 def invert(x):
